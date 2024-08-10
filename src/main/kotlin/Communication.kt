@@ -19,7 +19,7 @@ val json = Json {
     ignoreUnknownKeys = true
 }
 
-fun initialize(): NodeId {
+fun initialize(): InitializeData {
     val init = json.decodeFromString<InitMessage>(readln())
     val myNodeId = init.body.node_id
     val reply = Message(
@@ -32,5 +32,10 @@ fun initialize(): NodeId {
         }
     )
     sendJson(reply)
-    return NodeId(myNodeId)
+    return InitializeData(
+        nodeId = NodeId(myNodeId),
+        allNodes = init.body.node_ids.map { NodeId(it) }
+    )
 }
+
+data class InitializeData(val nodeId: NodeId, val allNodes: List<NodeId>)

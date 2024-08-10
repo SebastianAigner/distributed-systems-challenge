@@ -1,8 +1,7 @@
-package io.sebi
+package io.sebi.echo
 
+import io.sebi.*
 import kotlinx.serialization.json.*
-import java.util.concurrent.atomic.AtomicInteger
-
 
 
 fun main() {
@@ -32,3 +31,12 @@ fun buildResponse(message: Message, body: JsonObjectBuilder.() -> Unit): JsonObj
     }
 }
 
+fun buildRequest(fromNode: NodeId, toNode: NodeId, body: JsonObjectBuilder.() -> Unit): JsonObject {
+    return buildJsonObject {
+        put("src", fromNode.nodeId)
+        put("dest", toNode.nodeId)
+        put("body", buildJsonObject {
+            body()
+        })
+    }
+}
