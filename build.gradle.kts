@@ -6,7 +6,7 @@ plugins {
 }
 
 application {
-    mainClass = "io.sebi.EchoKt"
+    mainClass = "io.sebi.UniqueIdKt"
 }
 
 group = "io.sebi"
