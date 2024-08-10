@@ -1,9 +1,16 @@
-package io.sebi.broadcast3b
+package io.sebi.broadcast3c
 
 import io.sebi.*
+import kotlinx.coroutines.*
 import kotlinx.serialization.json.*
+import java.util.concurrent.ConcurrentHashMap
 
 lateinit var initializeData: InitializeData
+
+val seenValues = mutableSetOf<Int>()
+val broadcasterScope = CoroutineScope(Job() + Dispatchers.Default)
+val replicationJobs = ConcurrentHashMap<Int, Job>()
+
 fun main() {
     initializeData =  initialize()
     while (true) {
@@ -14,18 +21,26 @@ fun main() {
             "broadcast" -> handleBroadcast(message)
             "read" -> handleRead(message)
             "replicate" -> handleReplicate(message)
+            "replicate_ok" -> handleReplicateOk(message)
             else -> error("Never seen the type $type before!")
         }
     }
 }
 
-val seenValues = mutableSetOf<Int>()
+fun handleReplicateOk(message: Message) {
+    val id = message.body.getValue("in_reply_to").jsonPrimitive.int
+    replicationJobs[id]?.cancel("Broadcast acknowledged.")
+    replicationJobs.remove(id)
+}
+
 
 fun handleReplicate(message: Message) {
     val value = message.body.getValue("message").jsonPrimitive.int
     seenValues += value
+    sendJson(buildResponse(message) {
+        put("type", "replicate_ok")
+    })
 }
-
 
 fun handleRead(message: Message) {
     sendJson(buildResponse(message) {
@@ -40,15 +55,27 @@ fun handleBroadcast(message: Message) {
     sendJson(buildResponse(message) {
         put("type", "broadcast_ok")
     })
-    val neighbors = initializeData.allNodes  - initializeData.nodeId
-    for(node in neighbors) {
-        sendJson(buildRequest(fromNode = initializeData.nodeId, toNode = node) {
-            put("type", "replicate")
-            put("message", value)
-        })
-    }
+    broadcasterScope.replicate(value)
 }
 
+
+
+private fun CoroutineScope.replicate(value: Int) {
+    val neighbors = initializeData.allNodes - initializeData.nodeId
+    for (node in neighbors) {
+        val (id, request) = buildRequest(fromNode = initializeData.nodeId, toNode = node) {
+            put("type", "replicate")
+            put("message", value)
+        }
+        val job = launch {
+            while(true) {
+                sendJson(request)
+                delay(2000)
+            }
+        }
+        replicationJobs[id] = job
+    }
+}
 
 
 fun handleTopology(message: Message) {

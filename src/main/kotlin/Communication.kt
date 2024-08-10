@@ -1,9 +1,7 @@
 package io.sebi
 
 import kotlinx.serialization.encodeToString
-import kotlinx.serialization.json.Json
-import kotlinx.serialization.json.buildJsonObject
-import kotlinx.serialization.json.put
+import kotlinx.serialization.json.*
 import java.util.concurrent.atomic.AtomicInteger
 
 
@@ -37,5 +35,33 @@ fun initialize(): InitializeData {
         allNodes = init.body.node_ids.map { NodeId(it) }
     )
 }
+
+fun buildResponse(message: Message, body: JsonObjectBuilder.() -> Unit): JsonObject {
+    return buildJsonObject {
+        put("src", message.dest)
+        put("dest", message.src)
+        put("body", buildJsonObject {
+            put("in_reply_to", message.body.getValue("msg_id"))
+            body()
+        })
+    }
+}
+
+fun buildRequest(fromNode: NodeId, toNode: NodeId, body: JsonObjectBuilder.() -> Unit): IdAndRequest {
+    val id = id.incrementAndGet()
+    return IdAndRequest(
+        id,
+        buildJsonObject {
+            put("src", fromNode.nodeId)
+            put("dest", toNode.nodeId)
+            put("body", buildJsonObject {
+                put("msg_id", id)
+                body()
+            })
+        })
+}
+
+data class IdAndRequest(val id: Int, val request: JsonObject)
+
 
 data class InitializeData(val nodeId: NodeId, val allNodes: List<NodeId>)
