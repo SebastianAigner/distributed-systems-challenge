@@ -6,7 +6,7 @@ plugins {
 }
 
 application {
-    mainClass = "io.sebi.UniqueIdKt"
+    mainClass = "io.sebi.BroadcastKt"
 }
 
 group = "io.sebi"
